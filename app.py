@@ -39,3 +39,46 @@ def submit_survey():
 
 if __name__ == "__main__":
     app.run(port=0, debug=True)
+
+from pydantic import BaseModel
+from typing import Optional
+
+class Submission(BaseModel):
+    email: str
+    age: int
+    submission_id: Optional[str] = None
+    user_agent: Optional[str] = None  # NEW optional field
+
+
+import hashlib
+
+def hash_sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+def save_submission(submission: Submission):
+    hashed_email = hash_sha256(submission.email)
+    hashed_age = hash_sha256(str(submission.age))  # Convert age to string first
+    
+    record = {
+        "email": hashed_email,
+        "age": hashed_age,
+        "submission_id": submission.submission_id,
+        "user_agent": submission.user_agent
+    }
+
+    # Example: write to JSON file
+    with open("submissions.json", "a") as f:
+        f.write(f"{record}\n")
+
+from datetime import datetime
+
+def generate_submission_id(email: str) -> str:
+    now = datetime.utcnow().strftime("%Y%m%d%H")  # UTC date + hour
+    return hash_sha256(email + now)
+
+def process_submission(submission: Submission):
+    if not submission.submission_id:
+        submission.submission_id = generate_submission_id(submission.email)
+    
+    save_submission(submission)
+
